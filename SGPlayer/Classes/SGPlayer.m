@@ -43,6 +43,7 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
 
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) NSLock *lock;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGClock *clock;
+@property (NS_NONATOMIC_IOSONLY, strong) AVAssetWriter *recorder;
 
 @end
 
@@ -53,6 +54,7 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
 @synthesize currentItem = _currentItem;
 @synthesize audioRenderer = _audioRenderer;
 @synthesize videoRenderer = _videoRenderer;
+@synthesize recorder = _recorder;
 
 - (instancetype)init
 {
@@ -87,6 +89,7 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 #endif
     [SGActivity removeTarget:self];
+    [self stopRecorde:^{}];
     [self->_currentItem close];
     [self->_clock close];
     [self->_audioRenderer close];
@@ -693,5 +696,43 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
     }
 }
 #endif
+
+#pragma mark - Recorder
+- (BOOL)isRecording {
+    return self.recorder != NULL;
+}
+
+- (BOOL)startRecordeMP4:(NSURL*)fileURL {
+    NSError *error;
+    self.recorder = [AVAssetWriter assetWriterWithURL:fileURL fileType:AVFileTypeMPEG4 error:&error];
+    if (error != NULL) {
+        return false;
+    }
+    CFTimeInterval recordingStartTime = CACurrentMediaTime();
+    
+    AVAssetWriterInput *videoRecoder = [self.videoRenderer startRecorde:recordingStartTime];
+    if (!videoRecoder) {
+        return false;
+    }
+    [self.recorder addInput:videoRecoder];
+    
+    AVAssetWriterInput *audioRecoder = [self.audioRenderer startRecorde:recordingStartTime];
+    if (!audioRecoder) {
+        return false;
+    }
+    [self.recorder addInput:audioRecoder];
+    
+    [self.recorder startWriting];
+    [self.recorder startSessionAtSourceTime:kCMTimeZero];
+    
+    return true;
+}
+
+- (void)stopRecorde:(void (^)(void))handler {
+    [self.videoRenderer stopRecorde];
+    [self.audioRenderer stopRecorde];
+    [self.recorder finishWritingWithCompletionHandler:handler];
+    self.recorder = NULL;
+}
 
 @end

@@ -102,6 +102,37 @@
     }];
 }
 
+- (void)share:(NSArray *) items {
+    UIActivityViewController *controller = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:NULL];
+    [self presentViewController:controller animated:YES completion:NULL];
+}
+
+- (IBAction)snapshot:(UIButton *)sender {
+    NSString *path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"Image.png"];
+    UIImage *image = [self.player.videoRenderer currentImage];
+    [UIImagePNGRepresentation(image) writeToFile:path atomically:YES];
+    NSURL *file = [NSURL fileURLWithPath:path];
+    
+    [self share:@[file]];
+}
+
+- (IBAction)recorder:(UIButton *)sender {
+    NSString *path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"Video.mp4"];
+    NSURL *file = [NSURL fileURLWithPath:path];
+    
+    if ([self.player isRecording]) {
+        [self.player stopRecorde:^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self share:@[file]];
+            });
+        }];
+    } else {
+        [self.player startRecordeMP4:file];
+    }
+    
+    [sender setSelected:[self.player isRecording]];
+}
+
 #pragma mark - Tools
 
 - (NSString *)timeStringFromSeconds:(CGFloat)seconds

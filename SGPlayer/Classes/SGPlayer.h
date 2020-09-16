@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <SGPlayer/SGPlayerHeader.h>
+@import AVFoundation;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -323,6 +324,34 @@ __END_DECLS
     Default is main queue.
  */
 @property (NS_NONATOMIC_IOSONLY, strong) NSOperationQueue *notificationQueue;
+
+@end
+
+#pragma mark - Recorder
+
+@interface SGPlayer ()
+
+@property (NS_NONATOMIC_IOSONLY, readonly) BOOL isRecording;
+
+/*!
+@method startRecorde:
+@abstract
+   Recode media to fileURL.
+
+@discussion
+   Use this method to capture media as file.
+*/
+- (BOOL)startRecordeMP4:(NSURL*)fileURL ;
+
+/*!
+@method stopRecorde:
+@abstract
+   Stop recode media to fileURL.
+
+@discussion
+   Use this method to stop recode.
+*/
+- (void)stopRecorde:(void (^)(void))handler;
 
 @end
 

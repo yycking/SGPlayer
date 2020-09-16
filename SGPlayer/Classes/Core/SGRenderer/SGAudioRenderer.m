@@ -32,7 +32,8 @@
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGClock *clock;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGAudioPlayer *player;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGAudioFrame *currentFrame;
-
+@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInput *assetWriterAudioInput;
+@property (NS_NONATOMIC_IOSONLY, readonly) CFTimeInterval recordingStartTime;
 @end
 
 @implementation SGAudioRenderer
@@ -64,6 +65,7 @@
         self->_lock = [[NSLock alloc] init];
         self->_capacity = SGCapacityCreate();
         self->_descriptor = [SGAudioRenderer supportedAudioDescriptor];
+        self->_recordingStartTime = 0;
     }
     return self;
 }
@@ -325,6 +327,17 @@
         }
         bufferLeftFrames -= framesToCopy;
     }
+    if (self.assetWriterAudioInput == nil) {
+        AudioStreamBasicDescription asbd = player.asbd;
+        self->_assetWriterAudioInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeAudio outputSettings:@{
+            (id)AVFormatIDKey: @(kAudioFormatMPEG4AAC),
+            (id)AVNumberOfChannelsKey : @(asbd.mChannelsPerFrame),
+            (id)AVSampleRateKey : @(asbd.mSampleRate),
+            (id)AVEncoderBitRateKey: @128000
+        }];
+        self.assetWriterAudioInput.expectsMediaDataInRealTime = YES;
+    }
+    [self writeAudioSamples:data asd:player.asbd numSamples:numberOfFrames hostTime:timeStamp->mHostTime];
     UInt32 framesCopied = numberOfFrames - bufferLeftFrames;
     UInt32 sizeCopied = framesCopied * (UInt32)sizeof(float);
     for (int i = 0; i < data->mNumberBuffers; i++) {
@@ -367,4 +380,56 @@
     capacityBlock();
 }
 
+#pragma mark - Recorder
+
+- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime {
+    self->_recordingStartTime = recordingStartTime;
+    
+    return self.assetWriterAudioInput;
+}
+
+- (void)stopRecorde {
+    if (self.recordingStartTime != 0) {
+        [self.assetWriterAudioInput markAsFinished];
+    }
+    self->_recordingStartTime = 0;
+}
+
+- (void)writeAudioSamples:(AudioBufferList*)samples
+                      asd:(AudioStreamBasicDescription)monoStreamFormat
+               numSamples:(UInt32)numSamples
+                 hostTime:(UInt64)hostTime {
+    if (self.recordingStartTime == 0 || self.assetWriterAudioInput.isReadyForMoreMediaData != YES) {
+        return;
+    }
+    
+    CMFormatDescriptionRef format = NULL;
+    OSStatus status = CMAudioFormatDescriptionCreate(kCFAllocatorDefault, &monoStreamFormat, 0, NULL, 0, NULL, NULL, &format);
+    if (status != noErr) {
+        // really shouldn't happen
+        return;
+    }
+    
+    CMSampleTimingInfo timing = { CMTimeMake(1, monoStreamFormat.mSampleRate), kCMTimeZero, kCMTimeInvalid };
+    
+    CMSampleBufferRef sampleBuffer = NULL;
+    status = CMSampleBufferCreate(kCFAllocatorDefault, NULL, false, NULL, NULL, format, numSamples, 1, &timing, 0, NULL, &sampleBuffer);
+    if (status != noErr) {
+        CFRelease(format);
+        return;
+    }
+    
+    // add the samples to the buffer
+    status = CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer,
+                                                            kCFAllocatorDefault,
+                                                            kCFAllocatorDefault,
+                                                            0,
+                                                            samples);
+    [self.assetWriterAudioInput appendSampleBuffer:sampleBuffer];
+    if (status != noErr) {
+        CFRelease(sampleBuffer);
+        CFRelease(format);
+        return;
+    }
+}
 @end

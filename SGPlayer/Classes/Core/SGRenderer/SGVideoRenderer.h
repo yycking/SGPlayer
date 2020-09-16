@@ -11,6 +11,7 @@
 #import <SGPlayer/SGVRViewport.h>
 #import <SGPlayer/SGPLFImage.h>
 #import <SGPlayer/SGPLFView.h>
+@import AVFoundation;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -112,6 +113,31 @@ typedef NS_ENUM(NSUInteger, SGScalingMode) {
     Main thread only.
  */
 - (nullable SGPLFImage *)currentImage;
+
+@end
+
+#pragma mark - Recorder
+@interface SGVideoRenderer ()
+/*!
+@method startRecorde:
+@abstract
+   Recode media to fileURL.
+
+@discussion
+   Use this method to capture media as file.
+*/
+
+- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime;
+
+/*!
+@method stopRecorde:
+@abstract
+   Stop recode media to fileURL.
+
+@discussion
+   Use this method to stop recode.
+*/
+- (void)stopRecorde;
 
 @end
 

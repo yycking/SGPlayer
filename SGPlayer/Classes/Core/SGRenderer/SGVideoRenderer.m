@@ -47,6 +47,9 @@
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGMetalTextureLoader *textureLoader;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGMetalRenderPipelinePool *pipelinePool;
 
+@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInput *assetWriterVideoInput;
+@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInputPixelBufferAdaptor *assetWriterPixelBufferInput;
+@property (NS_NONATOMIC_IOSONLY, readonly) CFTimeInterval recordingStartTime;
 @end
 
 @implementation SGVideoRenderer
@@ -90,6 +93,7 @@
         self->_displayMode = SGDisplayModePlane;
         self->_scalingMode = SGScalingModeResizeAspect;
         self->_matrixMaker = [[SGVRProjection alloc] init];
+        self->_recordingStartTime = 0;
     }
     return self;
 }
@@ -420,12 +424,18 @@
     NSArray<id<MTLTexture>> *textures = nil;
     if (frame.pixelBuffer) {
         textures = [self->_textureLoader texturesWithCVPixelBuffer:frame.pixelBuffer];
+        [self writeCVPixelBuffer:frame.pixelBuffer];
     } else {
         textures = [self->_textureLoader texturesWithCVPixelFormat:frame.descriptor.cv_format
                                                              width:frame.descriptor.width
                                                             height:frame.descriptor.height
                                                              bytes:(void **)frame.data
                                                        bytesPerRow:frame.linesize];
+        [self writeCVPixelFormat:frame.descriptor.cv_format
+                           width:frame.descriptor.width
+                          height:frame.descriptor.height
+                           bytes:(void **)frame.data
+                     bytesPerRow:frame.linesize];
     }
     [frame unlock];
     if (!textures.count) {
@@ -633,6 +643,128 @@
     } else {
         self->_metalView.preferredFramesPerSecond = 1;
     }
+}
+
+#pragma mark - Recorder
+
+- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime {
+    self->_recordingStartTime = recordingStartTime;
+    
+    return self.assetWriterVideoInput;
+}
+
+- (void)stopRecorde {
+    if (self.recordingStartTime != 0) {
+        [self.assetWriterVideoInput markAsFinished];
+    }
+    self->_recordingStartTime = 0;
+}
+
+- (void)writeCVPixelFormat:(OSType)pixelFormat
+                     width:(NSUInteger)width
+                    height:(NSUInteger)height
+                     bytes:(void **)bytes
+               bytesPerRow:(int *)bytesPerRow
+{
+    if (self.assetWriterVideoInput == nil) {
+        self->_assetWriterVideoInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:@{
+            AVVideoCodecKey : AVVideoCodecTypeH264,
+            AVVideoWidthKey : @(width),
+            AVVideoHeightKey : @(height)
+        }];
+        self.assetWriterVideoInput.expectsMediaDataInRealTime = YES;
+        
+        self->_assetWriterPixelBufferInput = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:self.assetWriterVideoInput sourcePixelBufferAttributes:@{
+            (id)kCVPixelBufferPixelFormatTypeKey: @(pixelFormat),
+            (id)kCVPixelBufferWidthKey: @(width),
+            (id)kCVPixelBufferHeightKey : @(height)
+        }];
+    }
+    
+    if (self.recordingStartTime == 0  || self.assetWriterVideoInput.isReadyForMoreMediaData != YES) {
+        return;
+    }
+    
+    CVPixelBufferRef pixelBuffer;
+    CVPixelBufferPoolRef pixelBufferPool = self.assetWriterPixelBufferInput.pixelBufferPool;
+    if (CVPixelBufferPoolCreatePixelBuffer(NULL, pixelBufferPool, &pixelBuffer) != kCVReturnSuccess) {
+        return;
+    }
+    
+    static NSUInteger const channelCount = 3;
+    NSUInteger planes = 0;
+    NSUInteger widths[channelCount] = {0};
+    NSUInteger heights[channelCount] = {0};
+    MTLPixelFormat formats[channelCount] = {0};
+    if (pixelFormat == kCVPixelFormatType_420YpCbCr8Planar) {
+        planes = 3;
+        widths[0] = width;
+        widths[1] = width / 2;
+        widths[2] = width / 2;
+        heights[0] = height;
+        heights[1] = height / 2;
+        heights[2] = height / 2;
+        formats[0] = MTLPixelFormatR8Unorm;
+        formats[1] = MTLPixelFormatR8Unorm;
+        formats[2] = MTLPixelFormatR8Unorm;
+    } else if (pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange) {
+        planes = 2;
+        widths[0] = width;
+        widths[1] = width / 2;
+        heights[0] = height;
+        heights[1] = height / 2;
+        formats[0] = MTLPixelFormatR8Unorm;
+        formats[1] = MTLPixelFormatRG8Unorm;
+    } else if (pixelFormat == kCVPixelFormatType_32BGRA) {
+        planes = 1;
+        widths[0] = width;
+        heights[0] = height;
+        formats[0] = MTLPixelFormatBGRA8Unorm;
+    } else {
+        return;
+    }
+    CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+    for (NSUInteger i = 0; i < planes; i++) {
+        void* cbcrBaseAddress = CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, i);
+        memcpy(cbcrBaseAddress, bytes[i], widths[i]*heights[i]);
+    }
+    CFTimeInterval frameTime = CACurrentMediaTime() - self.recordingStartTime;
+    CMTime presentationTime = CMTimeMakeWithSeconds(frameTime, 240);
+    [self.assetWriterPixelBufferInput appendPixelBuffer:pixelBuffer withPresentationTime:presentationTime];
+    CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+    CFRelease(pixelBuffer);
+}
+
+- (void)writeCVPixelBuffer:(CVPixelBufferRef)pixelBuffer
+{
+    if (self.assetWriterVideoInput == nil) {
+        NSNumber *width = @(CVPixelBufferGetWidth(pixelBuffer));
+        NSNumber *height = @(CVPixelBufferGetHeight(pixelBuffer));
+        NSNumber *type = @(CVPixelBufferGetPixelFormatType(pixelBuffer));
+        self->_assetWriterVideoInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:@{
+            AVVideoCodecKey : AVVideoCodecTypeH264,
+            AVVideoWidthKey : width,
+            AVVideoHeightKey : height
+        }];
+        self.assetWriterVideoInput.expectsMediaDataInRealTime = YES;
+        
+        self->_assetWriterPixelBufferInput = [AVAssetWriterInputPixelBufferAdaptor assetWriterInputPixelBufferAdaptorWithAssetWriterInput:self.assetWriterVideoInput sourcePixelBufferAttributes:@{
+            (id)kCVPixelBufferPixelFormatTypeKey: type,
+            (id)kCVPixelBufferWidthKey: width,
+            (id)kCVPixelBufferHeightKey : height
+        }];
+    }
+    
+    if (self.recordingStartTime == 0 || self.assetWriterVideoInput.isReadyForMoreMediaData != YES) {
+        return;
+    }
+    
+    CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+    
+    CFTimeInterval frameTime = CACurrentMediaTime() - self.recordingStartTime;
+    CMTime presentationTime = CMTimeMakeWithSeconds(frameTime, 240);
+    [self.assetWriterPixelBufferInput appendPixelBuffer:pixelBuffer withPresentationTime:presentationTime];
+    CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
 }
 
 @end

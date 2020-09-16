@@ -8,7 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <SGPlayer/SGAudioDescriptor.h>
-
+@import AVFoundation;
 @interface SGAudioRenderer : NSObject
 
 /*!
@@ -32,4 +32,28 @@
  */
 @property (NS_NONATOMIC_IOSONLY) Float64 volume;
 
+@end
+
+#pragma mark - Recorder
+@interface SGAudioRenderer ()
+/*!
+@method startRecorde:
+@abstract
+   Recode media to fileURL.
+
+@discussion
+   Use this method to capture media as file.
+*/
+
+- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime;
+
+/*!
+@method stopRecorde:
+@abstract
+   Stop recode media to fileURL.
+
+@discussion
+   Use this method to stop recode.
+*/
+- (void)stopRecorde;
 @end
