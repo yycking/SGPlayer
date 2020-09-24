@@ -706,26 +706,37 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
     NSError *error;
     self.recorder = [AVAssetWriter assetWriterWithURL:fileURL fileType:AVFileTypeMPEG4 error:&error];
     if (error != NULL) {
+        self.recorder = NULL;
         return false;
     }
     CFTimeInterval recordingStartTime = CACurrentMediaTime();
     
     AVAssetWriterInput *videoRecoder = [self.videoRenderer startRecorde:recordingStartTime];
     if (!videoRecoder) {
+        [self.videoRenderer stopRecorde];
+        self.recorder = NULL;
         return false;
     }
     [self.recorder addInput:videoRecoder];
     
     AVAssetWriterInput *audioRecoder = [self.audioRenderer startRecorde:recordingStartTime];
     if (!audioRecoder) {
+        [self.videoRenderer stopRecorde];
+        [self.audioRenderer stopRecorde];
+        self.recorder = NULL;
         return false;
     }
     [self.recorder addInput:audioRecoder];
     
-    [self.recorder startWriting];
-    [self.recorder startSessionAtSourceTime:kCMTimeZero];
+    if ([self.recorder startWriting]) {
+        [self.recorder startSessionAtSourceTime:kCMTimeZero];
+        return true;
+    }
+    [self.videoRenderer stopRecorde];
+    [self.audioRenderer stopRecorde];
+    self.recorder = NULL;
     
-    return true;
+    return false;
 }
 
 - (void)stopRecorde:(void (^)(void))handler {
