@@ -32,7 +32,6 @@
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGClock *clock;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGAudioPlayer *player;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGAudioFrame *currentFrame;
-@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInput *assetWriterAudioInput;
 @property (NS_NONATOMIC_IOSONLY, readonly) CFTimeInterval recordingStartTime;
 @end
 
@@ -382,10 +381,8 @@
 
 #pragma mark - Recorder
 
-- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime {
+- (void)startRecorde:(CFTimeInterval)recordingStartTime {
     self->_recordingStartTime = recordingStartTime;
-    
-    return self.assetWriterAudioInput;
 }
 
 - (void)stopRecorde {

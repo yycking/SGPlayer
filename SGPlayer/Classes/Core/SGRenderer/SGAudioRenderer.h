@@ -36,6 +36,7 @@
 
 #pragma mark - Recorder
 @interface SGAudioRenderer ()
+@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInput *assetWriterAudioInput;
 /*!
 @method startRecorde:
 @abstract
@@ -45,7 +46,7 @@
    Use this method to capture media as file.
 */
 
-- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime;
+- (void)startRecorde:(CFTimeInterval)recordingStartTime;
 
 /*!
 @method stopRecorde:

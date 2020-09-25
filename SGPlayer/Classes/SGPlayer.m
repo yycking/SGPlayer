@@ -711,7 +711,7 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
     }
     CFTimeInterval recordingStartTime = CACurrentMediaTime();
     
-    AVAssetWriterInput *videoRecoder = [self.videoRenderer startRecorde:recordingStartTime];
+    AVAssetWriterInput *videoRecoder = self.videoRenderer.assetWriterVideoInput;
     if (!videoRecoder) {
         [self.videoRenderer stopRecorde];
         self.recorder = NULL;
@@ -719,7 +719,7 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
     }
     [self.recorder addInput:videoRecoder];
     
-    AVAssetWriterInput *audioRecoder = [self.audioRenderer startRecorde:recordingStartTime];
+    AVAssetWriterInput *audioRecoder = self.audioRenderer.assetWriterAudioInput;
     if (!audioRecoder) {
         [self.videoRenderer stopRecorde];
         [self.audioRenderer stopRecorde];
@@ -730,6 +730,9 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
     
     if ([self.recorder startWriting]) {
         [self.recorder startSessionAtSourceTime:kCMTimeZero];
+        [self.videoRenderer startRecorde:recordingStartTime];
+        [self.audioRenderer startRecorde:recordingStartTime];
+        
         return true;
     }
     [self.videoRenderer stopRecorde];

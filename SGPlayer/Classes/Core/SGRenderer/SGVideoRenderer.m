@@ -47,7 +47,6 @@
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGMetalTextureLoader *textureLoader;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGMetalRenderPipelinePool *pipelinePool;
 
-@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInput *assetWriterVideoInput;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInputPixelBufferAdaptor *assetWriterPixelBufferInput;
 @property (NS_NONATOMIC_IOSONLY, readonly) CFTimeInterval recordingStartTime;
 @end
@@ -647,10 +646,8 @@
 
 #pragma mark - Recorder
 
-- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime {
+- (void)startRecorde:(CFTimeInterval)recordingStartTime {
     self->_recordingStartTime = recordingStartTime;
-    
-    return self.assetWriterVideoInput;
 }
 
 - (void)stopRecorde {

@@ -118,6 +118,7 @@ typedef NS_ENUM(NSUInteger, SGScalingMode) {
 
 #pragma mark - Recorder
 @interface SGVideoRenderer ()
+@property (NS_NONATOMIC_IOSONLY, strong, readonly) AVAssetWriterInput *assetWriterVideoInput;
 /*!
 @method startRecorde:
 @abstract
@@ -127,7 +128,7 @@ typedef NS_ENUM(NSUInteger, SGScalingMode) {
    Use this method to capture media as file.
 */
 
-- (AVAssetWriterInput*)startRecorde:(CFTimeInterval)recordingStartTime;
+- (void)startRecorde:(CFTimeInterval)recordingStartTime;
 
 /*!
 @method stopRecorde:
