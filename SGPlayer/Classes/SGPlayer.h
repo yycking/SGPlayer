@@ -332,6 +332,7 @@ __END_DECLS
 @interface SGPlayer ()
 
 @property (NS_NONATOMIC_IOSONLY, readonly) BOOL isRecording;
+@property (NS_NONATOMIC_IOSONLY, readonly) BOOL canRecorde;
 
 /*!
 @method startRecorde:

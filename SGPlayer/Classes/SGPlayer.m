@@ -44,7 +44,7 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) NSLock *lock;
 @property (NS_NONATOMIC_IOSONLY, strong, readonly) SGClock *clock;
 @property (NS_NONATOMIC_IOSONLY, strong) AVAssetWriter *recorder;
-
+@property (NS_NONATOMIC_IOSONLY, strong) dispatch_queue_t recordeQueue;
 @end
 
 @implementation SGPlayer
@@ -72,6 +72,8 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
         self->_actionMask = SGInfoActionNone;
         self->_minimumTimeInfoInterval = 1.0;
         self->_notificationQueue = [NSOperationQueue mainQueue];
+        self->_recordeQueue = \
+            dispatch_queue_create("asset.writer.append", DISPATCH_QUEUE_SERIAL);
 #if SGPLATFORM_TARGET_OS_IPHONE_OR_TV
         self->_pausesWhenInterrupted = YES;
         self->_pausesWhenEnteredBackground = NO;
@@ -698,6 +700,10 @@ NSNotificationName const SGPlayerDidChangeInfoNotification = @"SGPlayerDidChange
 #endif
 
 #pragma mark - Recorder
+- (BOOL)canRecorde {
+    return self.videoRenderer.assetWriterVideoInput != NULL && self.audioRenderer.assetWriterAudioInput != NULL;
+}
+
 - (BOOL)isRecording {
     return self.recorder != NULL;
 }
