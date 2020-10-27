@@ -12,10 +12,18 @@
 
 + (NSArray<SGVideoItem *> *)videoItems
 {
+    NSURL *rtsp = [NSURL URLWithString:@"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"];
     NSURL *i_see_fire = [[NSBundle mainBundle] URLForResource:@"i-see-fire" withExtension:@"mp4"];
     NSURL *google_help_vr = [[NSBundle mainBundle] URLForResource:@"google-help-vr" withExtension:@"mp4"];
     
-    NSMutableArray *items = [NSMutableArray arrayWithCapacity:8];
+    NSMutableArray *items = [NSMutableArray arrayWithCapacity:9];
+    {
+        SGVideoItem *item = [[SGVideoItem alloc] init];
+        item.name = @"RTSP";
+        item.asset = [SGAsset assetWithURL:rtsp];
+        item.displayMode = SGDisplayModePlane;
+        [items addObject:item];
+    }
     {
         SGVideoItem *item = [[SGVideoItem alloc] init];
         item.name = @"I See Fire";
