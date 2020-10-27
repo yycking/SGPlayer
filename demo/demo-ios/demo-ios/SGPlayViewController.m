@@ -117,20 +117,28 @@
 }
 
 - (IBAction)recorder:(UIButton *)sender {
-    NSString *path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"Video.mp4"];
-    NSURL *file = [NSURL fileURLWithPath:path];
-    
-    if ([self.player isRecording]) {
-        [self.player stopRecorde:^{
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self share:@[file]];
-            });
-        }];
-    } else {
-        [self.player startRecordeMP4:file];
-    }
-    
-    [sender setSelected:[self.player isRecording]];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),^{
+        NSString *path = [[NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) firstObject] stringByAppendingPathComponent:@"Video.mp4"];
+        NSURL *file = [NSURL fileURLWithPath:path];
+        
+        if ([self.player isRecording]) {
+            [self.player stopRecorde:^{
+                NSError *error;
+                NSDictionary *attrs = [NSFileManager.defaultManager attributesOfItemAtPath:path error:&error];
+                NSLog(@"attrs %llu",attrs.fileSize);
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self share:@[file]];
+                });
+            }];
+        } else {
+            NSError *error;
+            [NSFileManager.defaultManager removeItemAtPath:path error:&error];
+            [self.player startRecordeMP4:file];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [sender setSelected:[self.player isRecording]];
+        });
+    });
 }
 
 #pragma mark - Tools
