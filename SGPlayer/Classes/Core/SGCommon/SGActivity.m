@@ -7,6 +7,11 @@
 //
 
 #import "SGActivity.h"
+#import "SGPLFTargets.h"
+
+#if SGPLATFORM_TARGET_OS_IPHONE_OR_TV
+#import <UIKit/UIKit.h>
+#endif
 
 @interface SGActivity ()
 
@@ -75,7 +80,7 @@
 - (void)reload
 {
 #if SGPLATFORM_TARGET_OS_IPHONE_OR_TV
-    BOOL disable = self.objects.count <= 0;
+    BOOL disable = self.targets.count <= 0;
     dispatch_async(dispatch_get_main_queue(), ^{
         [UIApplication sharedApplication].idleTimerDisabled = disable;
     });
