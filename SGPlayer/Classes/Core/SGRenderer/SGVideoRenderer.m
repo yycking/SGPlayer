@@ -433,8 +433,7 @@
         [self writeCVPixelFormat:frame.descriptor.cv_format
                            width:frame.descriptor.width
                           height:frame.descriptor.height
-                           bytes:(void **)frame.data
-                     bytesPerRow:frame.linesize];
+                           bytes:(void **)frame.data];
     }
     [frame unlock];
     if (!textures.count) {
@@ -661,7 +660,6 @@
                      width:(NSUInteger)width
                     height:(NSUInteger)height
                      bytes:(void **)bytes
-               bytesPerRow:(int *)bytesPerRow
 {
     if (self.assetWriterVideoInput == nil) {
         self->_assetWriterVideoInput = [AVAssetWriterInput assetWriterInputWithMediaType:AVMediaTypeVideo outputSettings:@{

@@ -403,7 +403,7 @@
     CMFormatDescriptionRef format = NULL;
     OSStatus status = CMAudioFormatDescriptionCreate(kCFAllocatorDefault, &monoStreamFormat, 0, NULL, 0, NULL, NULL, &format);
     if (status != noErr) {
-        // really shouldn't happen
+        CFRelease(format);
         return;
     }
     
@@ -412,6 +412,7 @@
     CMSampleBufferRef sampleBuffer = NULL;
     status = CMSampleBufferCreate(kCFAllocatorDefault, NULL, false, NULL, NULL, format, numSamples, 1, &timing, 0, NULL, &sampleBuffer);
     if (status != noErr) {
+        CFRelease(sampleBuffer);
         CFRelease(format);
         return;
     }
@@ -422,11 +423,9 @@
                                                             kCFAllocatorDefault,
                                                             0,
                                                             samples);
-    [self.assetWriterAudioInput appendSampleBuffer:sampleBuffer];
-    if (status != noErr) {
-        CFRelease(sampleBuffer);
-        CFRelease(format);
-        return;
-    }
+    BOOL result = [self.assetWriterAudioInput appendSampleBuffer:sampleBuffer];
+    
+    CFRelease(sampleBuffer);
+    CFRelease(format);
 }
 @end
