@@ -423,7 +423,7 @@
                                                             kCFAllocatorDefault,
                                                             0,
                                                             samples);
-    BOOL result = [self.assetWriterAudioInput appendSampleBuffer:sampleBuffer];
+    [self.assetWriterAudioInput appendSampleBuffer:sampleBuffer];
     
     CFRelease(sampleBuffer);
     CFRelease(format);

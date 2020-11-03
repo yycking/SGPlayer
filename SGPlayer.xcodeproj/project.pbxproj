@@ -1865,7 +1865,7 @@
 		9CEFA6CD1E7122BF00835CAB /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				LastUpgradeCheck = 1210;
 				ORGANIZATIONNAME = single;
 				TargetAttributes = {
 					9C8637F521904A0900D730EC = {
@@ -1889,6 +1889,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				Base,
 			);
 			mainGroup = 9CEFA6CC1E7122BF00835CAB;
 			productRefGroup = 9CEFA6D71E7122BF00835CAB /* Products */;
