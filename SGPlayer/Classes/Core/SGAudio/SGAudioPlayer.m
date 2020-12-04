@@ -47,7 +47,7 @@
 #if SGPLATFORM_TARGET_OS_MAC
     acd.componentSubType = kAudioUnitSubType_DefaultOutput;
 #elif SGPLATFORM_TARGET_OS_IPHONE_OR_TV
-    acd.componentSubType = kAudioUnitSubType_RemoteIO;
+    acd.componentSubType = kAudioUnitSubType_VoiceProcessingIO;
 #endif
     acd.componentManufacturer = kAudioUnitManufacturer_Apple;
     return acd;
